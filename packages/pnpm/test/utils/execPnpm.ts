@@ -7,9 +7,14 @@ const binDir = path.join(__dirname, '..', '..', 'bin')
 const pnpmBinLocation = path.join(binDir, 'pnpm.js')
 const pnpxBinLocation = path.join(binDir, 'pnpx.js')
 
-export async function execPnpm (args: string[]): Promise<void> {
+export async function execPnpm (
+  args: string[],
+  opts?: {
+    env: Object,
+  },
+): Promise<void> {
   await new Promise((resolve, reject) => {
-    const proc = spawnPnpm(args)
+    const proc = spawnPnpm(args, opts)
 
     proc.on('error', reject)
 
@@ -20,9 +25,18 @@ export async function execPnpm (args: string[]): Promise<void> {
   })
 }
 
-export function spawnPnpm (args: string[], opts?: {storeDir?: string}): NodeChildProcess {
+export function spawnPnpm (
+  args: string[],
+  opts?: {
+    env?: Object,
+    storeDir?: string,
+  },
+): NodeChildProcess {
   return crossSpawn.spawn('node', [pnpmBinLocation, ...args], {
-    env: createEnv(opts),
+    env: {
+      ...createEnv(opts),
+      ...opts?.env,
+    } as NodeJS.ProcessEnv,
     stdio: 'inherit',
   })
 }
@@ -78,7 +92,7 @@ function createEnv (opts?: {storeDir?: string}): NodeJS.ProcessEnv {
     npm_config_verify_store_integrity: 'true',
   }
   for (let [key, value] of Object.entries(process.env)) {
-    if (!key.startsWith('npm_config_')) {
+    if (key.toLowerCase() === 'path' || key === 'COLORTERM') {
       env[key] = value
     }
   }
